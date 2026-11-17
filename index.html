@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Saltbound</title>
+<style>
+  :root{
+    --deep:#172b38; --sea:#224b66; --steel:#4e7c9a; --foam:#dfeaf2;
+    --brass:#7a623b; --dark:#102634; --blood:#b8433a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--deep);
+    font-family:'Palatino Linotype','Book Antiqua',Georgia,serif;color:var(--foam);}
+  canvas{display:block;}
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:10;}
+
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;z-index:30;pointer-events:auto;text-align:center;}
+  #title-screen{
+    background:
+      linear-gradient(180deg, rgba(16,38,52,.55) 0%, rgba(16,38,52,.82) 70%, #102634 100%),
+      url('https://cdn.tesana.ai/one-tap/media/plan_art/eb2c2947-7fb1-4ac5-9ca2-3c42c33e6494/key_art_c98f7e09fce7.webp') center/cover no-repeat,
+      #102634;
+  }
+  #title-screen h1{
+    font-size:clamp(3rem,9vw,6.5rem);letter-spacing:.28em;font-weight:400;
+    color:var(--foam);text-shadow:0 0 30px rgba(110,168,199,.55),0 4px 18px rgba(0,0,0,.8);
+    margin-bottom:.4rem;
+  }
+  #title-screen p.tag{font-style:italic;color:#a9c2d2;letter-spacing:.12em;margin-bottom:2.2rem;}
+  .controls{display:flex;gap:1.6rem;flex-wrap:wrap;justify-content:center;margin-bottom:2.4rem;}
+  .controls span{color:#8fb3c7;font-size:.95rem;letter-spacing:.06em;}
+  .controls b{color:var(--foam);border:1px solid #4e7c9a;border-radius:4px;padding:.1rem .5rem;
+    font-family:Georgia,serif;margin-right:.35rem;background:rgba(23,43,56,.6);}
+  button{pointer-events:auto;cursor:pointer;font-family:inherit;font-size:1.15rem;letter-spacing:.22em;
+    color:var(--foam);background:rgba(34,75,102,.55);border:1px solid var(--steel);
+    padding:.8rem 3rem;border-radius:2px;transition:all .25s;}
+  button:hover{background:rgba(78,124,154,.75);box-shadow:0 0 24px rgba(110,168,199,.45);}
+
+  #death-screen{display:none;background:radial-gradient(ellipse at center, rgba(23,43,56,.72), rgba(9,18,26,.96));}
+  #death-screen h1{font-size:3rem;letter-spacing:.2em;color:var(--blood);text-shadow:0 0 30px rgba(184,67,58,.5);margin-bottom:1rem;}
+  #death-screen p{color:#a9c2d2;font-style:italic;margin-bottom:2.2rem;max-width:34rem;line-height:1.7;}
+
+  #hud{position:fixed;inset:0;display:none;}
+  #hp-wrap{position:absolute;left:24px;bottom:24px;width:280px;}
+  #hp-label{font-size:.75rem;letter-spacing:.25em;color:#8fb3c7;margin-bottom:4px;}
+  #hp-bar{height:16px;background:rgba(9,18,26,.8);border:1px solid #3e5a6e;border-radius:2px;overflow:hidden;}
+  #hp-fill{height:100%;width:100%;background:linear-gradient(90deg,#3f7d5a,#69a97c);transition:width .15s;}
+  #hp-fill.low{background:linear-gradient(90deg,#8c2f28,#c1554a);}
+  #salvage{position:absolute;right:24px;bottom:24px;text-align:right;}
+  #salvage .num{font-size:1.7rem;color:var(--foam);text-shadow:0 0 12px rgba(127,216,232,.6);}
+  #salvage .lbl{font-size:.72rem;letter-spacing:.3em;color:#8fb3c7;}
+  #objective{position:absolute;top:20px;left:50%;transform:translateX(-50%);
+    font-size:.95rem;letter-spacing:.14em;color:#cfe2ee;background:rgba(16,38,52,.65);
+    border:1px solid rgba(78,124,154,.4);padding:.5rem 1.4rem;border-radius:2px;white-space:nowrap;}
+  #banner{position:absolute;top:34%;left:50%;transform:translateX(-50%);font-size:1.5rem;
+    font-style:italic;letter-spacing:.12em;color:var(--foam);text-shadow:0 0 24px rgba(0,0,0,.9);
+    opacity:0;transition:opacity .6s;text-align:center;white-space:nowrap;}
+  #interact{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);
+    font-size:1rem;letter-spacing:.08em;color:var(--foam);background:rgba(16,38,52,.75);
+    border:1px solid var(--steel);padding:.45rem 1.1rem;border-radius:2px;display:none;}
+  #interact b{border:1px solid var(--foam);border-radius:3px;padding:0 .4rem;margin-right:.5rem;font-size:.9rem;}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:20;opacity:0;
+    background:radial-gradient(ellipse at center, transparent 45%, rgba(140,30,25,.55) 100%);}
+  #flash{position:fixed;inset:0;pointer-events:none;z-index:25;opacity:0;background:#cfe4f2;}
+  #fade{position:fixed;inset:0;pointer-events:none;z-index:28;opacity:0;background:#05090d;transition:opacity .5s;}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="hud">
+    <div id="objective">Wake the hidden mechanisms (0/3)</div>
+    <div id="banner"></div>
+    <div id="interact"><b>E</b><span id="interact-label"></span></div>
+    <div id="hp-wrap">
+      <div id="hp-label">THE SAILOR</div>
+      <div id="hp-bar"><div id="hp-fill"></div></div>
+    </div>
+    <div id="salvage">
+      <div class="num" id="salvage-num">0</div>
+      <div class="lbl">SALVAGE</div>
+    </div>
+  </div>
+</div>
+<div id="vignette"></div>
+<div id="flash"></div>
+<div id="fade"></div>
+
+<div class="overlay" id="title-screen">
+  <h1>SALTBOUND</h1>
+  <p class="tag">Every light you raise, the sea will answer.</p>
+  <div class="controls">
+    <span><b>W A S D</b>move</span>
+    <span><b>MOUSE</b>aim</span>
+    <span><b>LMB</b>cutlass</span>
+    <span><b>Q</b>heavy blow</span>
+    <span><b>SPACE</b>jump</span>
+    <span><b>E</b>interact</span>
+  </div>
+  <button id="start-btn">SET FOOT ON THE ROCK</button>
+</div>
+
+<div class="overlay" id="death-screen">
+  <h1>THE SEA KEEPS HIM</h1>
+  <p id="death-flavor">It always did. Every fire, every beacon, every desperate light —
+    only ever a dinner bell, ringing across the black water.</p>
+  <p id="death-stats" style="font-style:normal;letter-spacing:.15em;"></p>
+  <button id="restart-btn">WASH ASHORE AGAIN</button>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
